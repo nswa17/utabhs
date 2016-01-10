@@ -18,28 +18,31 @@ main = do
   print $ gridAdoptness matchup2
   putStrLn ""
 
-data Grid = Grid {teams::[Int], cp::Int}
+data Grid = Grid {teams::[Int], cp1::Int, cp2::Int} deriving (Show, Read)
 
-instance Show Grid where
-  show g = (concat $ intersperse "|" $ map show $ teams g) ++ ":" ++ (show $ cp g)
-  --show g = show . cp $ g
+--instance Show Grid where
+--  show g = (concat $ intersperse "|" $ map show $ teams g) ++ ":" ++ (show $ cp g)
+--  --show g = show . cp $ g
 
 instance Eq Grid where
   g == h = (teams g)  == (teams h)
+
+instance Ord Grid where
+  g1 `compare` g2 = (negate $ cp1 g1, negate $ cp2 g1) `compare` (negate $ cp1 g2, negate $ cp2 g2)
 
 related g h = (length $ nub $ (teams g) ++ (teams h)) /= (length (nub $ teams g) + length (nub $ teams h))
 
 type Grids = [Grid]
 
-random i j = (i^3 + j^2 - i * j + j `div` 2) `mod` 12
+random i j = (i^3 + j^2 - i * j + j `div` 5) `mod` 12
 
-gridAdoptness :: Grids -> Int
-gridAdoptness grids = (sum $ map cp grids) `div` (length grids)
+gridAdoptness :: Grids -> (Int, Int)
+gridAdoptness grids = ((sum $ map cp1 grids) `div` (length grids), (sum $ map cp2 grids) `div` (length grids))
 
 createGrids :: Int -> Grids
 --createGrids n = (\i j -> Grid [i, j] $ random i j) <$> [1..n] <*> [1..n]
-createGrids n = [Grid [i, j] $ random i j | i <- [1..n], j <- [1..n], i > j]
-createGridsBp n = [Grid [i, j, k, l] $ random i j | i <- [1..n], j <- [1..n], k <- [1..n], l <- [1..n], i > j, j > k, k > l]
+createGrids n = [Grid [i, j] (random i j) (random j i) | i <- [1..n], j <- [1..n], i > j]
+createGridsBp n = [Grid [i, j, k, l] (random i j) (random j i) | i <- [1..n], j <- [1..n], k <- [1..n], l <- [1..n], i > j, j > k, k > l]
 
 restGrids :: Grids -> Grid -> Grids
 restGrids [] _ = []
@@ -55,19 +58,15 @@ chooseGrids (g:gs) = g:(chooseGrids $ restGrids gs g)
 sortByNothing :: Grids -> Grids
 sortByNothing = id
 
-sortByCp :: Grids -> Grids
-sortByCp grids = sortOn (negate . cp) grids
-sortByCpRev grids = sortOn cp grids
-
 -- choose grids by given order
 chooseGridsNothing :: Grids -> Grids
 chooseGridsNothing = chooseGrids . sortByNothing
 
 -- choose grids best by best
 chooseGridsBest :: Grids -> Grids
-chooseGridsBest = chooseGrids . sortByCp
+chooseGridsBest = chooseGrids . sort
 
-bestRelated grids grid = head $ sortByCp $ relatedGrids grids grid
+bestRelated grids grid = head $ sort $ relatedGrids grids grid
 
 relatedGrids [] _ = []
 relatedGrids (g:gs) grid
