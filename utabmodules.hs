@@ -1,5 +1,6 @@
 module Main where
 import Data.List
+import Control.Concurrent
 
 main = do
   a <- getLine
@@ -7,14 +8,17 @@ main = do
   let
     matchup1 = getMatchupDemo $ read a
   mapM_ print matchup1
-  putStrLn ""
   print $ gridAdoptness matchup1
   --mapM_ print $ getMatchupDemoBp $ read b
   putStrLn ""
   let
     matchup2 = getMatchupDemo2 $ read a
   mapM_ print matchup2
+  print $ gridAdoptness matchup2
   putStrLn ""
+  let
+    matchup3 = getMatchupDemo3 $ read a
+  mapM_ print matchup3
   print $ gridAdoptness matchup2
   putStrLn ""
 
@@ -75,18 +79,31 @@ relatedGrids (g:gs) grid
   where rest = relatedGrids gs grid
 
 -- choose grids which are not extremely bad
+chooseGridsNoWorse :: Grids -> Grids
+chooseGridsNoWorse [] = []
+chooseGridsNoWorse all@(g:gs) =
+  let
+    bestGrid = bestRelated all g
+  in
+    bestGrid:(chooseGridsNoWorse $ restGrids all bestGrid)
+
+-- choose best in grids which have worst grid in all
 chooseGridsNoWorst :: Grids -> Grids
 chooseGridsNoWorst [] = []
-chooseGridsNoWorst all@(g:gs) = let bestGrid = bestRelated all g in bestGrid:(chooseGridsNoWorst $ restGrids all bestGrid)
-
-getMatchup :: (Grids -> Grids) -> Grids -> Grids
-getMatchup chooseAlg grids = chooseAlg grids
+chooseGridsNoWorst grids =
+  let
+    worstGrid = minimum grids; bestGrid = bestRelated grids worstGrid
+  in
+    bestGrid:(chooseGridsNoWorst $ restGrids grids bestGrid)
 
 getMatchupDemo :: Int -> Grids
-getMatchupDemo = getMatchup chooseGridsBest . createGrids
+getMatchupDemo = chooseGridsBest . createGrids
 
 getMatchupDemo2 :: Int -> Grids
-getMatchupDemo2 = getMatchup chooseGridsNoWorst . createGrids 
+getMatchupDemo2 = chooseGridsNoWorse . createGrids
+
+getMatchupDemo3 :: Int -> Grids
+getMatchupDemo3 = chooseGridsNoWorst . createGrids
 
 getMatchupDemoBp :: Int -> Grids
-getMatchupDemoBp = getMatchup chooseGridsBest . createGridsBp
+getMatchupDemoBp = chooseGridsBest . createGridsBp
