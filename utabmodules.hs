@@ -31,7 +31,7 @@ waiting n = do
 
 getMatchup :: (Grids -> Grids) -> MVar Bool -> MVar Grids -> Grids -> IO ()
 getMatchup chooseAlg ref matchup grids = do
-  putMVar matchup $ chooseAlg grids
+  putMVar matchup $! chooseAlg grids
   putStrLn "Done"
   putMVar ref True
 
@@ -77,7 +77,7 @@ threadGetMatchups grids = do
           mapM_ print matchup
         False -> go algfinished mvMatchup
 
-db = let gs = createGrids 100 in threadGetMatchups gs
+db = let gs = createGrids 300 in threadGetMatchups gs
 
 data Grid = Grid {teams::[Int], cp1::Int, cp2::Int} deriving (Show, Read)
 
