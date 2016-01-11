@@ -1,6 +1,7 @@
 module Main where
 import Data.List
 import Control.Concurrent
+import Control.Monad
 
 main = do
   a <- getLine
@@ -21,6 +22,62 @@ main = do
   mapM_ print matchup3
   print $ gridAdoptness matchup2
   putStrLn ""
+
+waiting :: Int -> IO ()
+waiting n = do
+  putStrLn $ "waiting" ++ (replicate n '.')
+  threadDelay 1000000
+  waiting (n+1)
+
+getMatchup :: (Grids -> Grids) -> MVar Bool -> MVar Grids -> Grids -> IO ()
+getMatchup chooseAlg ref matchup grids = do
+  putMVar matchup $ chooseAlg grids
+  putStrLn "Done"
+  putMVar ref True
+
+threadGetMatchups grids = do
+  alg1finished <- newMVar False
+  matchup1 <- newMVar []
+  alg2finished <- newMVar False
+  matchup2 <- newMVar []
+  alg3finished <- newMVar False
+  matchup3 <- newMVar []
+
+  w <- forkIO $ waiting 0
+  u <- forkIO $ getMatchup chooseGridsBest alg1finished matchup1 grids
+  v <- forkIO $ getMatchup chooseGridsNoWorse alg2finished matchup2 grids
+  x <- forkIO $ getMatchup chooseGridsNoWorst alg3finished matchup3 grids
+
+  {--
+  testF matchup1
+
+  where
+    testF :: MVar Grids -> IO ()
+    testF mvGrids = do
+      threadDelay 1000000
+      grids <- takeMVar mvGrids
+      mapM_ print grids
+      putStrLn "called"
+      testF mvGrids
+  --}
+  
+  go alg1finished matchup1
+  go alg2finished matchup2 
+  go alg3finished matchup3 
+  killThread w
+
+  where
+    go :: MVar Bool -> MVar Grids -> IO ()
+    go algfinished mvMatchup = do
+      tf <- takeMVar algfinished
+      matchup <- takeMVar mvMatchup
+      case tf of
+        True -> do
+          putStrLn ""
+          mapM_ print matchup
+        False -> go algfinished mvMatchup
+
+db = let gs = createGrids 100 in threadGetMatchups gs
 
 data Grid = Grid {teams::[Int], cp1::Int, cp2::Int} deriving (Show, Read)
 
@@ -92,7 +149,8 @@ chooseGridsNoWorst :: Grids -> Grids
 chooseGridsNoWorst [] = []
 chooseGridsNoWorst grids =
   let
-    worstGrid = minimum grids; bestGrid = bestRelated grids worstGrid
+    worstGrid = minimum grids
+    bestGrid = bestRelated grids worstGrid
   in
     bestGrid:(chooseGridsNoWorst $ restGrids grids bestGrid)
 
