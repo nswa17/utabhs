@@ -3,6 +3,7 @@ import Data.List
 import Control.Concurrent
 import Control.Monad
 
+{--
 main = do
   a <- getLine
   --b <- getLine
@@ -22,6 +23,10 @@ main = do
   mapM_ print matchup3
   print $ gridAdoptness matchup2
   putStrLn ""
+--}
+
+main = do
+  threadGetMatchups $ createGrids 500
 
 waiting :: Int -> IO ()
 waiting n = do
@@ -31,8 +36,11 @@ waiting n = do
 
 getMatchup :: (Grids -> Grids) -> MVar Bool -> MVar Grids -> Grids -> IO ()
 getMatchup chooseAlg ref matchup grids = do
-  putMVar matchup $! chooseAlg grids
+  let
+      chosenGrids = chooseAlg grids
+  chosenGrids `seq` (putMVar matchup chosenGrids)
   putStrLn "Done"
+  print $ length chosenGrids
   putMVar ref True
 
 threadGetMatchups grids = do
@@ -71,10 +79,11 @@ threadGetMatchups grids = do
     go algfinished mvMatchup = do
       tf <- takeMVar algfinished
       matchup <- takeMVar mvMatchup
+      print $ length matchup
       case tf of
         True -> do
           putStrLn ""
-          mapM_ print matchup
+          --mapM_ print matchup
         False -> go algfinished mvMatchup
 
 db = let gs = createGrids 300 in threadGetMatchups gs
