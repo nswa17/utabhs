@@ -1,6 +1,11 @@
 module Main where
 import Control.Concurrent
 import Control.Monad
+import System.IO
+import Network
+import System.Environment (getArgs)
+import Control.Exception
+import Prelude hiding (catch)
 import qualified Socket
 import qualified Select
 import qualified ArrangeGrid
@@ -25,9 +30,60 @@ Main--Socket
 
 --}
 
+main :: IO ()
+main = withSocketsDo $ do
+         [p] <- getArgs
+         let port = fromIntegral (read p :: Int)
+         soc <- listenOn $ PortNumber port
+         putStrLn $ "start server, listening on: " ++ show port
+         acceptLoop soc `finally` sClose soc
 
+acceptLoop :: Socket -> IO ()
+acceptLoop soc = do
+  (hd, host, port) <- accept soc
+  --putStrLn "accepted"
+  --forkOS $ recvAndSend hd id id
+  --forkOS $ showRecv hd
+  --forkOS $ sendData hd "Hi"
+  --forkOS $ (read $ showRecv hd) :: Grids
+  line <- showRecv hd
+  putStrLn line
+  showGrids line
+  acceptLoop soc
 
+showGrids :: String -> IO ()
+showGrids string = do
+  print $ ((read string)::Grids)
 
+showRecv :: Handle -> IO String
+showRecv hd = do
+  l <- hGetLine hd
+  hClose hd
+  return l
+
+sendData :: Handle -> String -> IO ()
+sendData hd l = do
+  hPutStrLn hd l
+  hClose hd
+
+recvAndSend :: Handle -> (String -> a) -> (a -> String) -> IO ()
+recvAndSend hd f g = do
+  l <- hGetLine hd
+  hPutStrLn hd $ g $ f l
+  hClose hd
+
+echoLoop hd = do
+  sequence_ (repeat (do
+    -- ioアクションの無限リスト
+                        l <- hGetLine hd
+                        hPutStrLn hd l
+                        putStrLn l
+                        hFlush hd
+                     ))
+  `catch` (\(SomeException e) -> return ())
+  `finally` hClose hd
+
+{--
 {--
 main = do
   a <- getLine
@@ -112,3 +168,4 @@ threadGetMatchups grids = do
         False -> go algfinished mvMatchup
 
 db = let gs = ArrangeGrid.createGrids 300 in threadGetMatchups gs
+--}
