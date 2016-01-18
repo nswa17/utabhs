@@ -48,7 +48,9 @@ acceptLoop soc = do
   --forkOS $ (read $ showRecv hd) :: Grids
   line <- showRecv hd
   putStrLn line
-  showGrids line
+  --print $ (read line) + 1
+  let chosenGrids = Select.chooseGridsNoWorst $ read line
+  print $ chosenGrids
   acceptLoop soc
 
 showGrids :: String -> IO ()
